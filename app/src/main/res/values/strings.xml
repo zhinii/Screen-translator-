@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Screen Translator Prototype</string>
+    <string name="accessibility_service_description">Hides the translator glow when you tap, scroll, or change screens. It does not read or save screen text.</string>
+</resources>

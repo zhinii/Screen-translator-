@@ -1,0 +1,20 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.chtranslator.prototype'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.chtranslator.prototype'
+        minSdk 26
+        targetSdk 35
+        versionCode 17
+        versionName '0.17'
+    }
+}
+
+
+dependencies {
+    implementation 'com.google.mlkit:text-recognition-chinese:16.0.1'
+    implementation 'com.google.mlkit:translate:17.0.3'
+}
