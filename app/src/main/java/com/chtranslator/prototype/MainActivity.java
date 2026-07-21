@@ -121,8 +121,10 @@ public class MainActivity extends Activity {
     }
 
     public static void shiftCurrentOverlayForScroll(int deltaY) {
-        // Persistent overlay mode: do not move or clear on generic scroll callbacks.
-        // The accessibility watcher clears only on an explicit user swipe-up.
+        MainActivity instance = activeInstance;
+        if (instance == null) return;
+        if (deltaY == 0) return;
+        instance.mainHandler.post(() -> instance.shiftOcrOverlay(-deltaY));
     }
 
     public static void hideOverlayForPageChange() {
@@ -338,7 +340,7 @@ public class MainActivity extends Activity {
                 : "Dictionary mode: general only.";
         String regionText = "Region: "
                 + (REGION_SELECT.equals(getRegionModeLocal()) ? "Selection box" : "Whole screen") + ".";
-        String modeText = "Mode: persistent. Translations stay until explicit swipe-up. × closes app; long-press × restarts tool.";
+        String modeText = "Mode: manual. Tap A⇄中 to translate/reload; Whole/Select changes region; × closes; long-press × restarts tool.";
         status.setText(overlayText + "\n"
                 + autoText + "\n"
                 + sessionText + "\n"
@@ -478,7 +480,7 @@ public class MainActivity extends Activity {
                             .apply();
                     if (!controlMoved && !controlLongPressTriggered) {
                         if (control.isCloseTap(downLocalX, downLocalY)) {
-                            closeTranslatorApplication();
+                            hideTranslatorOverlay();
                         } else if (control.isModeTap(downLocalX, downLocalY)) {
                             toggleRegionMode();
                         } else if (control.isTranslateTap(downLocalX, downLocalY)) {
@@ -493,38 +495,6 @@ public class MainActivity extends Activity {
 
         wm.addView(control, controlParams);
         addTouchWatcher();
-    }
-
-    private void closeTranslatorApplication() {
-        acceptOcrResults = false;
-        removeSelectionOverlay();
-        removeOverlayOnly();
-
-        if (control != null) {
-            try { wm.removeView(control); } catch (Exception ignored) {}
-            control = null;
-        }
-
-        removeTouchWatcher();
-        setTranslatorState(STATE_IDLE);
-
-        try {
-            stopService(new Intent(this, ScreenCaptureService.class));
-        } catch (Exception ignored) {}
-
-        Toast.makeText(this, "Translator closed", Toast.LENGTH_SHORT).show();
-
-        mainHandler.postDelayed(() -> {
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    finishAndRemoveTask();
-                } else {
-                    finish();
-                }
-            } catch (Exception ignored) {
-                try { finish(); } catch (Exception ignored2) {}
-            }
-        }, 80L);
     }
 
     private void restartTranslatorTool() {
@@ -1109,7 +1079,7 @@ public class MainActivity extends Activity {
 
 
     private static class OcrBorderView extends BaseBorderView {
-        private static final int MAX_VISIBLE_REPLACEMENTS = 120;
+        private static final int MAX_VISIBLE_REPLACEMENTS = 60;
         private static final float MIN_TEXT_SIZE = 9f;
         private static final float MAX_TEXT_SIZE = 26f;
         private static final float PAD_X = 4f;
@@ -1692,10 +1662,14 @@ public class MainActivity extends Activity {
             v.setOnTouchListener((view, event) -> {
                 int a = event.getAction();
                 if (a == MotionEvent.ACTION_OUTSIDE || a == MotionEvent.ACTION_DOWN) {
-                    // Passive real-touch marker only. Do not clear on ordinary taps.
-                    // The accessibility watcher uses this timestamp to distinguish
-                    // real user swipe-up scrolls from app-generated fake scroll events.
                     lastScreenTouchMs = System.currentTimeMillis();
+                    // Small delay so a touch on the floating control (separate window)
+                    // can register first and veto the clear.
+                    touchWatcherHandler.postDelayed(() -> {
+                        if (System.currentTimeMillis() - lastControlTouchMs > 600L) {
+                            hideOverlayForPageChange();
+                        }
+                    }, 250L);
                 }
                 return false;
             });

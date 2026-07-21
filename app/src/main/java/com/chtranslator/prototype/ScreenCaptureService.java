@@ -53,7 +53,7 @@ public class ScreenCaptureService extends Service {
 
     private static final int NOTIFICATION_ID = 701;
     private static final String CHANNEL_ID = "screen_translator_capture";
-    private static final int MAX_OCR_BOXES = 180;
+    private static final int MAX_OCR_BOXES = 100;
     private static final int MIN_BOX_WIDTH_PX = 18;
     private static final int MIN_BOX_HEIGHT_PX = 14;
 
@@ -577,7 +577,7 @@ public class ScreenCaptureService extends Service {
         if (!containsChinese(trimmed)) return;
 
         // Allow longer document lines, but avoid sending absurd OCR blobs.
-        if (trimmed.length() > 220) trimmed = trimmed.substring(0, 220);
+        if (trimmed.length() > 140) trimmed = trimmed.substring(0, 140);
 
         boxes.add(new MainActivity.OcrBox(trimmed, r.left, r.top, r.right, r.bottom));
     }
@@ -589,7 +589,7 @@ public class ScreenCaptureService extends Service {
 
         String trimmed = value == null ? "" : value.trim();
         if (trimmed.isEmpty()) return;
-        if (trimmed.length() > 220 && !trimmed.contains(" ")) return;
+        if (trimmed.length() > 140 && !trimmed.contains(" ")) return;
 
         String[] parts = trimmed.split("\\s+");
         if (parts.length <= 1) {
@@ -609,7 +609,7 @@ public class ScreenCaptureService extends Service {
         for (String part : parts) {
             if (boxes.size() >= MAX_OCR_BOXES) return;
             if (!containsChinese(part)) continue;
-            if (part.length() > 28) continue;
+            if (part.length() > 18) continue;
 
             int partWidth = Math.max(8, Math.round(availableWidth * (part.length() / (float) totalChars)));
             int right = Math.min(r.right, currentLeft + partWidth);
